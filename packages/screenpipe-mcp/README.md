@@ -149,6 +149,12 @@ npx @modelcontextprotocol/inspector npx screenpipe-mcp
 
 ## Available Tools
 
+### semantic-context
+Read compact app-specific context such as conversations, emails, tasks,
+documents, and code review. Structured context capture is experimental and off
+by default. When no semantic data is available, keep using `search-content` or
+`activity-summary`; the original capture data remains unchanged.
+
 ### search-content
 Search through recorded content with content type filtering:
 - `all` — OCR + Audio + Accessibility (default)

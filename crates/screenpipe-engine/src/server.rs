@@ -56,6 +56,7 @@ use crate::{
         },
         retranscribe::retranscribe_meeting_handler,
         search::{keyword_search_handler, search},
+        semantic::get_semantic_context,
         speakers::{
             delete_speaker_handler, get_similar_speakers_handler, get_speaker_sample_handler,
             get_unnamed_speakers_handler, mark_as_hallucination_handler, merge_speakers_handler,
@@ -766,6 +767,7 @@ impl SCServer {
             .expose_headers(CORS_EXPOSED_HEADERS);
         let server = Server::axum()
             .get("/search", search)
+            .get("/semantic/context", get_semantic_context)
             .get("/audio/list", api_list_audio_devices)
             .get("/vision/list", api_list_monitors)
             .get("/tags/autocomplete", autocomplete_tags)

@@ -202,6 +202,7 @@ impl DatabaseManager {
             .execute(&mut **tx.conn())
             .await?;
         let frames_deleted = frames_result.rows_affected();
+        super::semantic::cleanup_orphaned_semantic_data_in_tx(tx.conn()).await?;
 
         // 6. Delete orphaned video_chunks (no frames reference them anymore)
         let video_chunks_result = sqlx::query(
@@ -406,6 +407,7 @@ impl DatabaseManager {
             .execute(&mut **tx.conn())
             .await?;
         let frames_deleted = frames_result.rows_affected();
+        super::semantic::cleanup_orphaned_semantic_data_in_tx(tx.conn()).await?;
 
         // 8. Delete orphaned video_chunks
         let video_chunks_result = sqlx::query(
@@ -1073,6 +1075,10 @@ impl DatabaseManager {
         .await?;
         let audio_chunks_deleted = audio_chunks_result.rows_affected();
 
+        // Batch frame deletion deliberately defers global orphan scans until
+        // this once-per-retention-run cleanup.
+        super::semantic::cleanup_orphaned_semantic_data_in_tx(tx.conn()).await?;
+
         tx.commit().await.map_err(|e| {
             error!(
                 "failed to commit cleanup_orphaned_chunks transaction: {}",
@@ -1132,6 +1138,7 @@ impl DatabaseManager {
             .execute(&mut **tx.conn())
             .await?;
         let frames_deleted = frames_result.rows_affected();
+        super::semantic::cleanup_orphaned_semantic_data_in_tx(tx.conn()).await?;
 
         // 3. Delete orphaned video_chunks (cloud:// placeholders from sync)
         let video_chunks_result = sqlx::query(

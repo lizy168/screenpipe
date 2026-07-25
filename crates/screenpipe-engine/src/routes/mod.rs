@@ -20,6 +20,7 @@ pub mod power;
 pub mod response_format;
 pub mod retranscribe;
 pub mod search;
+pub mod semantic;
 pub mod speakers;
 pub mod streaming;
 pub mod time;

@@ -2976,6 +2976,10 @@ disableVision: boolean;
  */
 disableScreenshots?: boolean;
 /**
+ * Enable experimental normalized semantic context parsing. Off by default.
+ */
+enableSemanticContext?: boolean;
+/**
  * Disable the timeline / rewind feature. When true, the engine skips
  * timeline-only work: warming the hot frame cache from the DB at startup
  * and buffering captured frames/audio into the in-memory hot cache that

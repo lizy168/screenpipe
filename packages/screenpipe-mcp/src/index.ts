@@ -376,6 +376,28 @@ const server = new Server(
 // ---------------------------------------------------------------------------
 const TOOLS: Tool[] = [
   {
+    name: "semantic-context",
+    description:
+      "Read compact app-specific context parsed from supported apps, such as conversations, emails, tasks, documents, and code review. " +
+      "USE WHEN: structured app context is enabled and you want higher-signal, lower-token output than raw accessibility text. " +
+      "This experimental capture path is off by default. If it returns no data, use search-content or activity-summary for the unchanged historical behavior.",
+    annotations: { title: "Semantic Context", readOnlyHint: true, openWorldHint: false, idempotentHint: true },
+    inputSchema: {
+      type: "object",
+      properties: {
+        frame_id: { type: "integer", description: "Return semantic context attached to one frame." },
+        q: { type: "string", description: "Filter compact semantic items by text." },
+        start_time: {
+          type: "string",
+          description: "ISO 8601 UTC or relative time such as '2h ago'. Always provide unless frame_id is set.",
+        },
+        end_time: { type: "string", description: "ISO 8601 UTC or relative time. Defaults to now." },
+        app_name: { type: "string", description: "Filter by app display name." },
+        limit: { type: "integer", description: "Maximum frame contexts (default 10, max 100).", default: 10 },
+      },
+    },
+  },
+  {
     name: "search-content",
     description:
       "Search screen text, audio transcriptions, input events, and memories. Returns timestamped results with app context. " +
@@ -1059,9 +1081,10 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 | Step | Tool | When to use |
 |------|------|-------------|
 | 1 | activity-summary | Broad questions: "what was I doing?", "which apps?", "how long on X?" |
-| 2 | search-content | Need specific text, transcriptions, or content |
-| 3 | search-elements | Need UI structure — buttons, links, form fields |
-| 4 | frame-context | Need full detail for a specific moment (use frame_id from step 2) |
+| 2 | semantic-context | Need compact messages, emails, tasks, docs, or code context when experimental structured context is enabled |
+| 3 | search-content | Need specific text, transcriptions, or content, or semantic-context returned no data |
+| 4 | search-elements | Need UI structure: buttons, links, form fields |
+| 5 | frame-context | Need full detail for a specific moment (use frame_id from step 3) |
 
 ## Search Strategy
 
@@ -1577,6 +1600,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
 
         return { content: contentItems };
+      }
+
+      case "semantic-context": {
+        const normalized = normalizeTimeFields(args);
+        const params = new URLSearchParams();
+        for (const key of ["frame_id", "q", "start_time", "end_time", "app_name", "limit"] as const) {
+          const value = normalized[key];
+          if (value !== null && value !== undefined && value !== "") {
+            params.append(key, String(value));
+          }
+        }
+        const response = await callAPI(`/semantic/context?${params.toString()}`);
+        const text = (await response.text()).trim();
+        return {
+          content: [
+            {
+              type: "text",
+              text: text ||
+                "No structured app context found. The experimental parser may be disabled, the time range may contain no supported apps, or the parser may have abstained. Use search-content or activity-summary for the unchanged capture data.",
+            },
+          ],
+        };
       }
 
       case "list-meetings": {

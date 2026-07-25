@@ -10,6 +10,7 @@
 // Support` macOS, `%APPDATA%` Windows, `~/.config` Linux). Resolver
 // returns `None` for unknown apps, missing files, or any error — call
 // sites are safe to invoke for every focused frame.
+mod app_version;
 mod electron_docs;
 #[cfg(target_os = "linux")]
 mod linux;
@@ -164,6 +165,26 @@ pub struct AccessibilityTreeNode {
     /// Access key mnemonic (Windows: AccessKey).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub access_key: Option<String>,
+    /// Original preorder position in the platform walk. This transient field
+    /// lets semantic-only containers merge back with persisted text nodes
+    /// without serializing extra structure into the raw frame JSON.
+    #[serde(skip)]
+    pub walk_index: u32,
+    /// Parser-only container marker. These nodes are kept in memory for the
+    /// semantic worker and excluded from the historical raw tree payload.
+    #[serde(skip)]
+    pub semantic_only: bool,
+    /// AXDescription captured for parser use without expanding the persisted
+    /// raw text-node JSON contract.
+    #[serde(skip)]
+    pub semantic_description: Option<String>,
+    /// Parser-only DOM identifier for browser and Electron accessibility
+    /// nodes. Kept transient so opt-in parsing does not expand raw storage.
+    #[serde(skip)]
+    pub semantic_dom_identifier: Option<String>,
+    /// Space-delimited parser-only DOM classes.
+    #[serde(skip)]
+    pub semantic_dom_classes: Option<String>,
 }
 
 impl AccessibilityTreeNode {
@@ -192,6 +213,11 @@ impl AccessibilityTreeNode {
             accelerator_key: None,
             access_key: None,
             lines: None,
+            walk_index: 0,
+            semantic_only: false,
+            semantic_description: None,
+            semantic_dom_identifier: None,
+            semantic_dom_classes: None,
         }
     }
 }
@@ -332,10 +358,22 @@ pub struct WindowBounds {
 #[derive(Debug, Clone)]
 pub struct TreeSnapshot {
     pub app_name: String,
+    /// Stable native application identifier when the platform exposes one.
+    /// macOS stores the bundle identifier; Windows and Linux normally use
+    /// `executable` instead.
+    pub app_id: Option<String>,
+    /// Native process executable basename when available.
+    pub executable: Option<String>,
+    /// Native application version when inexpensive platform metadata exposes
+    /// it. Resolution is opt-in with semantic app identity and process-cached;
+    /// `None` deliberately causes version-specific parsers to abstain.
+    pub app_version: Option<String>,
     pub window_name: String,
     pub text_content: String,
     /// Structured nodes preserving role and hierarchy from the accessibility tree.
     pub nodes: Vec<AccessibilityTreeNode>,
+    /// Transient parser-only containers. Never persisted in raw frame JSON.
+    pub semantic_nodes: Vec<AccessibilityTreeNode>,
     pub browser_url: Option<String>,
     /// Absolute filesystem path of the document the focused window is editing,
     /// when the platform exposes one. macOS reads this from `AXDocument` when
@@ -455,6 +493,15 @@ pub struct TreeWalkerConfig {
     pub monitor_height: f64,
     /// Automatically detect and skip incognito / private browsing windows.
     pub ignore_incognito_windows: bool,
+    /// Resolve a stable application identifier for downstream semantic parsing.
+    /// Disabled by default so the historical capture path avoids extra process
+    /// metadata lookups when semantic context is not enabled.
+    pub capture_app_identity: bool,
+    /// Retain parser-relevant structural containers and their stable AX
+    /// identifiers. This is separate from the historical text-only tree and is
+    /// disabled by default. Enabling it adds two attributes to the existing
+    /// batched macOS AX read, but does not add another IPC round trip per node.
+    pub capture_semantic_structure: bool,
     /// Per-walk override for `max_nodes` (set by adaptive budget, takes precedence).
     pub max_nodes_override: Option<usize>,
     /// Per-walk override for `walk_timeout` (set by adaptive budget, takes precedence).
@@ -498,6 +545,8 @@ impl Default for TreeWalkerConfig {
             monitor_width: 0.0,
             monitor_height: 0.0,
             ignore_incognito_windows: true,
+            capture_app_identity: false,
+            capture_semantic_structure: false,
             max_nodes_override: None,
             walk_timeout_override: None,
             enable_line_bounds: true,
@@ -670,9 +719,13 @@ mod tests {
     fn snapshot_with_url(url: Option<&str>) -> TreeSnapshot {
         TreeSnapshot {
             app_name: "Safari".into(),
+            app_id: Some("com.apple.Safari".into()),
+            executable: None,
+            app_version: None,
             window_name: "Test".into(),
             text_content: "hello".into(),
             nodes: Vec::new(),
+            semantic_nodes: Vec::new(),
             browser_url: url.map(|u| u.to_string()),
             document_path: None,
             timestamp: Utc::now(),
@@ -749,6 +802,25 @@ mod tests {
         assert_eq!(config.max_nodes, 5000);
         assert_eq!(config.walk_timeout, Duration::from_millis(250));
         assert_eq!(config.max_text_length, 50_000);
+        assert!(!config.capture_app_identity);
+        assert!(!config.capture_semantic_structure);
+    }
+
+    #[test]
+    fn parser_only_fields_do_not_expand_persisted_node_json() {
+        let mut node = AccessibilityTreeNode::new("AXGroup".into(), "visible".into(), 2, None);
+        node.walk_index = 42;
+        node.semantic_only = true;
+        node.semantic_description = Some("parser description".into());
+        node.semantic_dom_identifier = Some("message-list".into());
+        node.semantic_dom_classes = Some("message selected".into());
+
+        let json = serde_json::to_string(&node).expect("serialize persisted node");
+        assert!(!json.contains("walk_index"));
+        assert!(!json.contains("semantic_only"));
+        assert!(!json.contains("parser description"));
+        assert!(!json.contains("message-list"));
+        assert!(!json.contains("message selected"));
     }
 
     #[test]

@@ -21,11 +21,18 @@ use std::cell::UnsafeCell;
 use std::time::Instant;
 use tracing::debug;
 
-use windows::Win32::Foundation::{HWND, RECT};
+use windows::core::{PCWSTR, PWSTR};
+use windows::Win32::Foundation::{CloseHandle, HWND, RECT};
 use windows::Win32::Graphics::Gdi::{
     GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
 };
+use windows::Win32::Storage::FileSystem::{
+    GetFileVersionInfoSizeW, GetFileVersionInfoW, VerQueryValueW, VS_FIXEDFILEINFO,
+};
 use windows::Win32::System::Com::{CoInitializeEx, COINIT_APARTMENTTHREADED};
+use windows::Win32::System::Threading::{
+    OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
+};
 use windows::Win32::UI::WindowsAndMessaging::{
     GetForegroundWindow, GetWindowRect, GetWindowTextW, GetWindowThreadProcessId,
 };
@@ -390,12 +397,21 @@ impl TreeWalkerPlatform for WindowsTreeWalker {
             }
             _ => None,
         };
+        let app_version = self
+            .config
+            .capture_app_identity
+            .then(|| windows_app_version(pid, &app_name))
+            .flatten();
 
         Ok(TreeWalkResult::Found(TreeSnapshot {
+            executable: Some(app_name.clone()),
+            app_id: None,
             app_name,
+            app_version,
             window_name,
             text_content: text_buffer,
             nodes,
+            semantic_nodes: Vec::new(),
             browser_url,
             document_path,
             timestamp: Utc::now(),
@@ -409,6 +425,60 @@ impl TreeWalkerPlatform for WindowsTreeWalker {
             window_bounds,
         }))
     }
+}
+
+fn windows_app_version(pid: u32, identity: &str) -> Option<String> {
+    super::app_version::cached_app_version(format!("windows:{pid}:{identity}"), || unsafe {
+        let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let mut path = vec![0u16; 32_768];
+        let mut path_len = path.len() as u32;
+        let query_result = QueryFullProcessImageNameW(
+            process,
+            PROCESS_NAME_WIN32,
+            PWSTR(path.as_mut_ptr()),
+            &mut path_len,
+        );
+        let _ = CloseHandle(process);
+        query_result.ok()?;
+        path.truncate(path_len as usize);
+        path.push(0);
+
+        let path = PCWSTR(path.as_ptr());
+        let size = GetFileVersionInfoSizeW(path, None);
+        if size == 0 {
+            return None;
+        }
+        let mut data = vec![0u8; size as usize];
+        GetFileVersionInfoW(path, 0, size, data.as_mut_ptr().cast()).ok()?;
+
+        let root = [b'\\' as u16, 0];
+        let mut info_ptr = std::ptr::null_mut();
+        let mut info_len = 0u32;
+        if !VerQueryValueW(
+            data.as_ptr().cast(),
+            PCWSTR(root.as_ptr()),
+            &mut info_ptr,
+            &mut info_len,
+        )
+        .as_bool()
+            || info_ptr.is_null()
+            || info_len < std::mem::size_of::<VS_FIXEDFILEINFO>() as u32
+        {
+            return None;
+        }
+
+        let info = &*info_ptr.cast::<VS_FIXEDFILEINFO>();
+        if info.dwSignature != 0xFEEF04BD {
+            return None;
+        }
+        Some(format!(
+            "{}.{}.{}.{}",
+            info.dwFileVersionMS >> 16,
+            info.dwFileVersionMS & 0xffff,
+            info.dwFileVersionLS >> 16,
+            info.dwFileVersionLS & 0xffff
+        ))
+    })
 }
 
 /// Monitor rectangle in screen coordinates (virtual desktop).
