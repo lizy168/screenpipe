@@ -201,8 +201,8 @@ const dailyMemoryTemplate = {
   timeRange: "today" as const,
   periodPolicy: { type: "fixed.v1" as const, value: "today" as const },
   pipes: [
-    { name: "day-recap", distribution: "bundled" },
-    { name: "missed-todos", distribution: "bundled" },
+    { name: "activity-enrichment", distribution: "store" },
+    { name: "workflow-patterns", distribution: "store" },
   ],
   slots: [
     {
@@ -212,7 +212,7 @@ const dailyMemoryTemplate = {
       width: 12,
       order: 0,
       intent: "Summarize today",
-      binding: { pipeName: "day-recap" },
+      binding: { pipeName: "activity-enrichment" },
     },
     {
       id: "unfinished-work",
@@ -221,7 +221,7 @@ const dailyMemoryTemplate = {
       width: 12,
       order: 1,
       intent: "Find unfinished work from today",
-      binding: { pipeName: "missed-todos" },
+      binding: { pipeName: "workflow-patterns" },
     },
   ],
 };
@@ -279,13 +279,13 @@ describe("getTemplatePipeReadiness", () => {
       "none",
     );
     expect(
-      getTemplatePipeReadiness(dailyMemoryTemplate, new Set(["day-recap"]))
+      getTemplatePipeReadiness(dailyMemoryTemplate, new Set(["activity-enrichment"]))
         .state,
     ).toBe("partial");
     expect(
       getTemplatePipeReadiness(
         dailyMemoryTemplate,
-        new Set(["day-recap", "missed-todos"]),
+        new Set(["activity-enrichment", "workflow-patterns"]),
       ).state,
     ).toBe("ready");
     expect(
@@ -294,8 +294,8 @@ describe("getTemplatePipeReadiness", () => {
         new Set([
           "unrelated-one",
           "unrelated-two",
-          "day-recap",
-          "missed-todos",
+          "activity-enrichment",
+          "workflow-patterns",
         ]),
       ).state,
     ).toBe("ready");

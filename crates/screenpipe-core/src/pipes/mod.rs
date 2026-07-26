@@ -58,14 +58,6 @@ const BUNDLED_BUILTIN_PIPES: &[(&str, &str)] = &[
         include_str!("../../assets/pipes/automate-my-work/pipe.md"),
     ),
     (
-        "missed-todos",
-        include_str!("../../assets/pipes/missed-todos/pipe.md"),
-    ),
-    (
-        "day-recap",
-        include_str!("../../assets/pipes/day-recap/pipe.md"),
-    ),
-    (
         "standup-update",
         include_str!("../../assets/pipes/standup-update/pipe.md"),
     ),
@@ -7251,7 +7243,7 @@ mod tests {
         manager.install_builtin_pipes().unwrap();
         manager.load_pipes().await.unwrap();
 
-        let bundled_manual = manager.get_pipe("day-recap").await.unwrap();
+        let bundled_manual = manager.get_pipe("time-breakdown").await.unwrap();
         assert_eq!(bundled_manual.config.schedule, "manual");
         assert!(bundled_manual.is_bundled_builtin);
 
@@ -7273,7 +7265,7 @@ mod tests {
         // schedule later must not turn it back into a hidden bundled template.
         manager
             .update_config(
-                "day-recap",
+                "time-breakdown",
                 HashMap::from([(
                     "schedule_config".to_string(),
                     serde_json::json!({
@@ -7286,24 +7278,24 @@ mod tests {
             )
             .await
             .unwrap();
-        let scheduled = manager.get_pipe("day-recap").await.unwrap();
+        let scheduled = manager.get_pipe("time-breakdown").await.unwrap();
         assert!(scheduled.config.schedule_config.is_some());
         assert!(!scheduled.is_bundled_builtin);
 
         manager
             .update_config(
-                "day-recap",
+                "time-breakdown",
                 HashMap::from([("schedule_config".to_string(), serde_json::Value::Null)]),
             )
             .await
             .unwrap();
-        let between_triggers = manager.get_pipe("day-recap").await.unwrap();
+        let between_triggers = manager.get_pipe("time-breakdown").await.unwrap();
         assert_eq!(between_triggers.config.schedule, "manual");
         assert!(!between_triggers.is_bundled_builtin);
 
         manager
             .update_config(
-                "day-recap",
+                "time-breakdown",
                 HashMap::from([(
                     "trigger".to_string(),
                     serde_json::json!({ "events": ["meeting_ended"] }),
@@ -7311,7 +7303,7 @@ mod tests {
             )
             .await
             .unwrap();
-        let meeting_triggered = manager.get_pipe("day-recap").await.unwrap();
+        let meeting_triggered = manager.get_pipe("time-breakdown").await.unwrap();
         assert_eq!(
             meeting_triggered.config.trigger.unwrap().events,
             vec!["meeting_ended"]
@@ -7552,7 +7544,7 @@ mod tests {
         assert!(migrate_builtin_pipe_text("meeting-summary", &fixed).is_none());
 
         // other builtins and unrelated content are left alone.
-        assert!(migrate_builtin_pipe_text("day-recap", stale).is_none());
+        assert!(migrate_builtin_pipe_text("time-breakdown", stale).is_none());
         assert!(migrate_builtin_pipe_text("meeting-summary", "no api calls here").is_none());
     }
 

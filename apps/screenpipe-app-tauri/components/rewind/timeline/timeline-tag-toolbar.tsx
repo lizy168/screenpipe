@@ -30,7 +30,7 @@ const PIPE_COLORS = [
 ];
 
 function pipeInitials(name: string): string {
-	// "meeting-summary" → "MS", "day-recap" → "DR", "ai-habits" → "AH"
+	// "meeting-summary" → "MS", "time-breakdown" → "TB", "ai-habits" → "AH"
 	const parts = name.split(/[-_\s]+/).filter(Boolean);
 	if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
 	return name.slice(0, 2).toUpperCase();

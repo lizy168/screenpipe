@@ -4,7 +4,7 @@
 
 /**
  * E2E for the summary/automation card duplicate (#4719, the maintainer's case:
- * clicking "Missed To-Dos" produced two rows — one titled from the label, its
+ * clicking a home automation card produced two rows — one titled from the label, its
  * twin from the AI title).
  *
  * Root cause: the card calls sendMessage directly; the send path persisted the
@@ -33,12 +33,10 @@ import { E2E_DATA_DIR } from "../helpers/app-launcher.js";
 
 const CHATS_DIR = join(E2E_DATA_DIR, "chats");
 // The home grid slugs (summary-cards.tsx HOME_CARD_SLUGS).
-const CARD_SLUGS = ["automate-my-work", "day-recap", "time-breakdown", "missed-todos"];
+const CARD_SLUGS = ["automate-my-work", "time-breakdown"];
 const CARD_DISPLAY_LABELS: Record<string, string> = {
   "automate-my-work": "⚡ Automate My Work",
-  "day-recap": "📋 Day Recap",
   "time-breakdown": "⏱ Time Breakdown",
-  "missed-todos": "✅ Missed To-Dos",
 };
 
 function chatFilesForDisplayLabel(displayLabel: string): string[] {

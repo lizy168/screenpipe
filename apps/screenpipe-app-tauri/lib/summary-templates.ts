@@ -199,33 +199,6 @@ export const FALLBACK_TEMPLATES: TemplatePipe[] = [
     prompt: buildAutomateMyWorkPrompt(),
   },
   {
-    name: "day-recap",
-    title: "Day Recap",
-    description: "Today's accomplishments, key moments, and unfinished work",
-    icon: "\u{1F4CB}",
-    featured: true,
-    prompt: `Analyze my screen and audio recordings from today (last 16 hours). Read the screenpipe skill first. Use limit=10 per search, max 5 searches total. Prefer /raw_sql with COUNT/GROUP BY for app usage. Use the API only — do not write or run code.
-
-Use this exact format:
-
-## Summary
-One sentence: what I mainly did today.
-
-## Accomplishments
-- Top 3 things I finished, with timestamps (e.g. "2:30 PM"). Name specific apps, files, or projects.
-
-## Key Moments
-- Important things I saw, said, or heard — with timestamps.
-
-## Unfinished Work
-- What to continue tomorrow — name the app, file, or task.
-
-## Patterns
-- Apps I used most and topics that recurred.
-
-Only report what you can verify from the data. End with: "**Next step:** [most important thing to continue]"`,
-  },
-  {
     name: "time-breakdown",
     title: "Time Breakdown",
     description: "Where your time went — by app, project, and category",
@@ -248,28 +221,5 @@ Use this exact format with durations and percentages:
 - focused / total as a percentage. Focused = coding + writing; unfocused = browsing + app-switching.
 
 End with: "**Suggestion:** [one specific change to improve tomorrow]"`,
-  },
-  {
-    name: "missed-todos",
-    title: "Missed To-Dos",
-    description: "Action items from the last few days you may have missed",
-    icon: "✅",
-    featured: true,
-    prompt: `Find action items and to-dos from the last 3 days that I may have missed. Read the screenpipe skill first. Use limit=10 per search, max 5 searches over the last 3 days. Query the API only — do not write or run code.
-
-Look across messages, meetings, docs, and issue trackers (e.g. Slack, Notion, Linear, GitHub) for commitments and tasks — phrases like "I'll", "can you", "TODO", "follow up", "by Friday", action items, and unchecked checkboxes.
-
-Use this exact format:
-
-## Likely Missed
-- [ ] Task — where it came from (app + person/thread) and when. Only items that still look unresolved.
-
-## Waiting on Me
-- [ ] Things someone asked me to do that I haven't acted on yet.
-
-## Quick Wins
-- [ ] Small tasks (<5 min) I can clear right now.
-
-Rank by urgency. Only include items you can actually see in the data — never invent tasks. If you find none, say so plainly. End with: "**Do first:** [the single most important item]"`,
   },
 ];

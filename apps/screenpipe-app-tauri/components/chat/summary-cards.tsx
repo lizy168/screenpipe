@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, CalendarDays, Pin, Zap } from "lucide-react";
+import { ArrowRight, Pin, Zap } from "lucide-react";
 import posthog from "posthog-js";
 import { PipeAIIconLarge } from "@/components/pipe-ai-icon";
 import { type TemplatePipe } from "@/lib/hooks/use-pipes";
@@ -59,7 +59,7 @@ export function SummaryCards({
   // (install_builtin_pipes never overwrites an existing pipe.md). The discover
   // tier is intentionally removed — the metrics showed it earned ~9% of clicks
   // across 6 cards while doubling the visible surface.
-  const HOME_CARD_SLUGS = ["automate-my-work", "day-recap", "time-breakdown", "missed-todos"];
+  const HOME_CARD_SLUGS = ["automate-my-work", "time-breakdown"];
   const byName = new Map<string, TemplatePipe>();
   for (const t of templatePipes) byName.set(t.name, t);
   for (const t of FALLBACK_TEMPLATES) byName.set(t.name, t);
@@ -132,30 +132,6 @@ export function SummaryCards({
         </button>
       )}
 
-      {/* Day Recap — secondary card */}
-      {featured.find((p) => p.name === "day-recap") && (() => {
-        const dayRecap = featured.find((p) => p.name === "day-recap")!;
-        return (
-          <button
-            data-testid={`summary-card-${dayRecap.name}`}
-            onClick={() => handleCardClick(dayRecap)}
-            className="group w-full max-w-lg mb-1.5 text-left px-3 py-2.5 border border-border/20 hover:bg-foreground hover:text-background hover:border-foreground transition-all duration-150 cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-background" strokeWidth={1.5} />
-              <div className="flex-1">
-                <div className="text-xs font-medium text-muted-foreground group-hover:text-background leading-tight">
-                  {dayRecap.title}
-                </div>
-                <div className="text-xs text-muted-foreground/60 group-hover:text-background/60 leading-tight mt-0.5">
-                  {dayRecap.description}
-                </div>
-              </div>
-            </div>
-          </button>
-        );
-      })()}
-
       {/* ─── Quick action chips ───────────────────────────────────────────── */}
       {/* One wrapping flow in the same 512px column as the cards: built-in
           chips first, then the user's saved templates, then "+ custom". The
@@ -165,8 +141,8 @@ export function SummaryCards({
       {/* Chips carry flex-grow so each wrap line stretches flush to the card
           column's edges (brick fill) instead of leaving a ragged right edge. */}
       <div className="w-full max-w-lg mb-4 flex flex-wrap items-center gap-1">
-        {/* Template-backed chips (Time Breakdown, Missed To-Dos) */}
-        {featured.filter((p) => p.name === "time-breakdown" || p.name === "missed-todos").map((pipe) => (
+        {/* Template-backed chips */}
+        {featured.filter((p) => p.name === "time-breakdown").map((pipe) => (
           <button
             key={pipe.name}
             data-testid={`summary-card-${pipe.name}`}
